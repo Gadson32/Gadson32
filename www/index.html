@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="viewport-fit=cover, width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>VideoCall Translate</title>
+  <link rel="stylesheet" href="css/app.css" />
+</head>
+<body>
+  <div id="setup-screen" class="screen">
+    <div class="setup-card">
+      <h1>VideoCall Translate</h1>
+      <p class="subtitle">Live captions &amp; translation for video calls</p>
+
+      <label for="display-name">Your name</label>
+      <input id="display-name" type="text" placeholder="e.g. Anthony" autocomplete="name" />
+
+      <label for="room-code">Room code</label>
+      <div class="room-row">
+        <input id="room-code" type="text" placeholder="Enter or generate a room code" autocapitalize="characters" />
+        <button id="generate-room-btn" class="btn-secondary" type="button">Generate</button>
+      </div>
+
+      <label for="my-language">My spoken language</label>
+      <select id="my-language"></select>
+
+      <label for="target-language">Translate captions to</label>
+      <select id="target-language"></select>
+
+      <div id="permission-status" class="permission-status" hidden></div>
+
+      <button id="join-btn" class="btn-primary" type="button">Join call</button>
+      <p id="setup-error" class="error-text" hidden></p>
+    </div>
+  </div>
+
+  <div id="call-screen" class="screen" hidden>
+    <div class="video-stage">
+      <video id="remote-video" autoplay playsinline></video>
+      <video id="local-video" autoplay playsinline muted></video>
+      <div id="connection-banner" class="connection-banner" hidden></div>
+    </div>
+
+    <div id="caption-panel" class="caption-panel">
+      <div id="caption-list" class="caption-list"></div>
+    </div>
+
+    <div class="call-controls">
+      <button id="toggle-mic-btn" class="control-btn" type="button" aria-label="Mute microphone">🎙️</button>
+      <button id="toggle-cam-btn" class="control-btn" type="button" aria-label="Turn off camera">📷</button>
+      <button id="toggle-captions-btn" class="control-btn active" type="button" aria-label="Toggle captions">💬</button>
+      <button id="leave-btn" class="control-btn danger" type="button" aria-label="Leave call">📞</button>
+    </div>
+
+    <div id="offline-banner" class="offline-banner" hidden>
+      Offline — captions will sync once you're back online (<span id="queue-count">0</span> queued)
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/languages.js"></script>
+  <script src="js/permissions.js"></script>
+  <script src="js/speech-engine.js"></script>
+  <script src="js/translate-queue.js"></script>
+  <script src="js/signaling-client.js"></script>
+  <script src="js/webrtc-call.js"></script>
+  <script src="js/app-lifecycle.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
