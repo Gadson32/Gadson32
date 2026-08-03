@@ -60,10 +60,12 @@ supabase/functions/translate/  Edge Function: server-side translation
    `window.storage`, which only ever existed inside the preview sandbox,
    without you having to run/host a signaling server yourself.
 4. **Server-side translation** — `supabase/functions/translate` is a
-   Supabase Edge Function that calls the Anthropic API with a
-   server-held `ANTHROPIC_API_KEY` (set as a Supabase secret, never sent
-   to the client). This replaces `window.claude.complete`, which was
-   specific to the sandbox.
+   Supabase Edge Function that calls MyMemory
+   (mymemory.translated.net), a free translation API needing no key and
+   no billing. This replaces `window.claude.complete`, which was
+   specific to the sandbox. (An earlier version of this function called
+   the Anthropic API instead — swapped out to avoid a paid dependency;
+   see "Known gaps" for the tradeoff.)
 5. **Native permissions** — `js/permissions.js` requests
    camera/microphone (via `getUserMedia`, which triggers the OS prompt
    inside the WebView) and speech-recognition permission (via the plugin,
@@ -94,13 +96,14 @@ at a different project:
 ```bash
 supabase link --project-ref <your-project-ref>
 supabase functions deploy translate
-supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
 ```
 
-`ANTHROPIC_API_KEY` **must** be set via `supabase secrets set` (or the
-Dashboard → Project Settings → Edge Functions → Secrets) — never commit
-it or paste it into a chat/AI tool. Without it, `/functions/v1/translate`
-returns a translation-failed error instead of leaking or hanging.
+No secret is required to run as-is — MyMemory's anonymous tier needs no
+key. Optionally set `MYMEMORY_EMAIL` (via `supabase secrets set
+MYMEMORY_EMAIL=you@example.com` or the Dashboard's Edge Functions →
+Secrets) to raise the free daily word limit from MyMemory's docs
+(anonymous ~5,000 words/day → ~50,000 words/day with an email on file).
+Never commit real secrets or paste them into a chat/AI tool regardless.
 
 The function is deployed with `verify_jwt = true`, so callers must send
 the project's anon/publishable key as `Authorization: Bearer <key>` (and
@@ -139,12 +142,23 @@ npx cap open ios      # requires Xcode (macOS only)
   racing to join at the same instant could in principle slip in — there's
   no server-side gate anymore now that there's no custom server. Fine for
   personal use; revisit if this becomes multi-tenant.
+- **Translation quality/reliability tradeoff**: MyMemory is free but
+  lower-quality than an LLM-based translation and rate-limited
+  (~5,000 words/day anonymous, ~50,000/day with `MYMEMORY_EMAIL` set).
+  Fine for personal use with two participants; if that limit becomes a
+  problem or translations aren't good enough, swap the `translate()`
+  function in `supabase/functions/translate/index.ts` for DeepL's free
+  tier (500k chars/month, needs a free account + API key) or an LLM API
+  again — the request/response shape the rest of the app expects
+  (`{ text, sourceLang, targetLang } -> { translation }`) stays the same
+  either way.
 - **Edge Function not yet live-tested from this environment**: this
   sandbox's outbound network policy blocks direct requests to
-  `*.supabase.co`, so the deployed function's HTTP behavior (auth gating,
-  translation, error responses) is verified by code review and by
-  testing the equivalent logic locally, not by an actual end-to-end
-  request. Test it for real once `ANTHROPIC_API_KEY` is set:
+  `*.supabase.co` (and to `api.mymemory.translated.net`), so the deployed
+  function's HTTP behavior (auth gating, translation, error responses) is
+  verified by code review and by testing the equivalent logic locally,
+  not by an actual end-to-end request. Test it for real from your own
+  machine:
   ```bash
   curl -X POST "https://lufmsqbqxkubhvdsdpon.supabase.co/functions/v1/translate" \
     -H "Content-Type: application/json" \

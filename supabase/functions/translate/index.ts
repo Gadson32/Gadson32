@@ -1,8 +1,13 @@
 // Server-side translation, running as a Supabase Edge Function instead of
-// a self-hosted Node process. The Anthropic key lives only in this
-// function's environment (set via `supabase secrets set`), never shipped
-// to the client — this is what replaces the sandbox-only
-// `window.claude.complete`.
+// a self-hosted Node process. Uses MyMemory (https://mymemory.translated.net)
+// — a free translation API that needs no API key and no billing, unlike
+// the Anthropic API this originally called. This is what replaces the
+// sandbox-only `window.claude.complete`.
+//
+// MyMemory's anonymous free tier is limited to ~5,000 words/day per
+// client IP; setting MYMEMORY_EMAIL (a Supabase secret, optional) raises
+// that to ~50,000 words/day per MyMemory's docs, still free, no signup
+// beyond having an email address they can rate-limit by.
 //
 // Auth: deployed with verify_jwt=true, so callers must send the
 // project's anon/publishable key (or a user JWT) as
@@ -11,17 +16,19 @@
 // embedded in the app; it is not a secret.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
-const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
-const MODEL = Deno.env.get("TRANSLATE_MODEL") || "claude-haiku-4-5-20251001";
+const MYMEMORY_API_URL = "https://api.mymemory.translated.net/get";
 
-const languageNameByCode: Record<string, string> = {
-  "en-US": "English", "en-GB": "English", "es-ES": "Spanish", "fr-FR": "French",
-  "de-DE": "German", "it-IT": "Italian", "pt-BR": "Portuguese", "ja-JP": "Japanese",
-  "ko-KR": "Korean", "zh-CN": "Mandarin Chinese", "hi-IN": "Hindi", "ar-SA": "Arabic"
+// MyMemory expects ISO 639-1 pairs (occasionally with a region, e.g.
+// pt-BR for Brazilian vs. European Portuguese) — not the full BCP-47
+// codes the app's language picker uses everywhere else.
+const myMemoryLangByCode: Record<string, string> = {
+  "en-US": "en", "en-GB": "en", "es-ES": "es", "fr-FR": "fr",
+  "de-DE": "de", "it-IT": "it", "pt-BR": "pt-BR", "ja-JP": "ja",
+  "ko-KR": "ko", "zh-CN": "zh-CN", "hi-IN": "hi", "ar-SA": "ar"
 };
 
-function languageName(code: string): string {
-  return languageNameByCode[code] || code;
+function myMemoryLang(code: string): string {
+  return myMemoryLangByCode[code] || code.split("-")[0];
 }
 
 const corsHeaders = {
@@ -31,40 +38,28 @@ const corsHeaders = {
 };
 
 async function translate(text: string, sourceLang: string, targetLang: string): Promise<string> {
-  const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
-  if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not configured");
   if (sourceLang === targetLang) return text;
 
-  const res = await fetch(ANTHROPIC_API_URL, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01"
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      max_tokens: 256,
-      system:
-        "You translate live spoken captions for a video call. Reply with ONLY the translation, " +
-        "no notes, no quotes, no original text repeated.",
-      messages: [
-        {
-          role: "user",
-          content: `Translate this ${languageName(sourceLang)} caption to ${languageName(targetLang)}:\n\n${text}`
-        }
-      ]
-    })
-  });
+  const langpair = `${myMemoryLang(sourceLang)}|${myMemoryLang(targetLang)}`;
+  const params = new URLSearchParams({ q: text, langpair });
+  const email = Deno.env.get("MYMEMORY_EMAIL");
+  if (email) params.set("de", email);
 
+  const res = await fetch(`${MYMEMORY_API_URL}?${params.toString()}`);
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    throw new Error(`Anthropic API error ${res.status}: ${body.slice(0, 200)}`);
+    throw new Error(`MyMemory API error ${res.status}: ${body.slice(0, 200)}`);
   }
 
   const data = await res.json();
-  const translation = data.content?.[0]?.text?.trim();
+  const translation = data?.responseData?.translatedText?.trim();
   if (!translation) throw new Error("Empty translation response");
+  // MyMemory returns HTTP 200 even when the daily quota is exhausted,
+  // signaling it only through this string inside an otherwise normal
+  // response body — a plain res.ok check would miss it.
+  if (translation.includes("MYMEMORY WARNING")) {
+    throw new Error(`MyMemory quota warning: ${translation.slice(0, 200)}`);
+  }
   return translation;
 }
 
