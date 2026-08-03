@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="viewport-fit=cover, width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Answer Assist</title>
+  <link rel="stylesheet" href="css/app.css" />
+</head>
+<body>
+  <div class="tabs">
+    <button id="tab-documents-btn" class="tab-btn active" type="button">Documents</button>
+    <button id="tab-live-btn" class="tab-btn" type="button">Live Assist</button>
+  </div>
+
+  <div id="documents-screen" class="screen">
+    <div class="panel">
+      <h1>Your documents</h1>
+      <p class="subtitle">Upload SOPs or company docs (.pdf, .txt, .md). Answers only ever come from these — nothing is pulled from the web.</p>
+
+      <input id="file-input" type="file" accept=".pdf,.txt,.md" hidden />
+      <button id="upload-btn" class="btn-primary" type="button">Upload document</button>
+      <p id="upload-status" class="status-text" hidden></p>
+
+      <div id="document-list" class="document-list"></div>
+    </div>
+  </div>
+
+  <div id="live-screen" class="screen" hidden>
+    <div class="panel">
+      <div class="live-header">
+        <button id="listen-btn" class="btn-primary" type="button">Start listening</button>
+        <span id="listening-indicator" class="listening-indicator" hidden>● Listening</span>
+      </div>
+
+      <div id="transcript-panel" class="transcript-panel">
+        <p class="placeholder-text">Transcript will appear here once you start listening.</p>
+      </div>
+
+      <button id="ask-btn" class="btn-primary" type="button" disabled>Get answer</button>
+
+      <div id="answer-card" class="answer-card" hidden>
+        <p id="answer-text"></p>
+        <p id="answer-sources" class="answer-sources"></p>
+      </div>
+
+      <p id="permission-status" class="status-text" hidden></p>
+    </div>
+  </div>
+
+  <script src="js/vendor/supabase.js"></script>
+  <script src="js/vendor/pdf.min.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/permissions.js"></script>
+  <script src="js/speech-engine.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/documents.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+{
+  "name": "answer-assist",
+  "version": "0.1.0",
+  "description": "Real-time answer assistant grounded in your own uploaded documents",
+  "private": true,
+  "scripts": {
+    "postinstall": "node scripts/copy-vendor.js",
+    "sync": "cap sync",
+    "android": "cap open android",
+    "ios": "cap open ios"
+  },
+  "dependencies": {
+    "@capacitor-community/speech-recognition": "^6.0.1",
+    "@capacitor/android": "^6.1.2",
+    "@capacitor/core": "^6.1.2",
+    "@capacitor/filesystem": "^6.0.1",
+    "@capacitor/ios": "^6.1.2",
+    "@capacitor/preferences": "^6.0.3",
+    "@supabase/supabase-js": "^2.112.0",
+    "capacitor-native-settings": "^6.0.6",
+    "pdfjs-dist": "^3.11.174"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.1.2"
+  }
+}

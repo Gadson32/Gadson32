@@ -1,0 +1,13 @@
+{
+  "appId": "com.gadson32.answerassist",
+  "appName": "Answer Assist",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "SpeechRecognition": {
+      "permissions": ["microphone", "speech"]
+    }
+  }
+}

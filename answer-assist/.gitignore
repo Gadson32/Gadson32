@@ -1,0 +1,26 @@
+node_modules/
+.env
+.env.local
+*.log
+npm-debug.log*
+
+# Android
+android/app/build/
+android/build/
+android/.gradle/
+android/captures/
+android/local.properties
+android/.idea/
+*.iml
+
+# iOS
+ios/App/Pods/
+ios/App/build/
+ios/App/App/public/
+ios/DerivedData/
+*.xcuserstate
+xcuserdata/
+
+# Capacitor copies www/ into native asset folders on every `cap sync` —
+# keep the generated copy out of git, www/ is the source of truth.
+android/app/src/main/assets/public/
