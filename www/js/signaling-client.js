@@ -1,80 +1,117 @@
-// Thin WebSocket client for the real-time signaling/relay server in
-// /server. This is what replaces `window.storage` — that object only
-// ever existed in the preview sandbox and can't sync anything between
-// two actual phones. Handles auto-reconnect with backoff so a brief
-// network blip during a call doesn't kill the session.
+// Real-time signaling/relay client backed by Supabase Realtime
+// (broadcast + presence on a per-room channel) instead of a self-hosted
+// WebSocket server. This is what replaces `window.storage` — that object
+// only ever existed in the preview sandbox and can't sync anything
+// between two actual phones.
+//
+// Presence tracks who's in the room: when a second participant's
+// presence appears, the peer already in the room emits "peer-joined" and
+// becomes the WebRTC caller — mirroring the join semantics a bespoke
+// signaling server would provide. Room-size limiting (max 2) is a
+// best-effort client-side check against a snapshot of presence state; a
+// third client racing to join at the same instant could in principle
+// slip in. Fine for this app's scope, not something to rely on for
+// anything security-sensitive.
 window.SignalingClient = (() => {
-  let ws = null;
+  let channel = null;
   let handlers = {};
-  let reconnectAttempts = 0;
-  let manualClose = false;
-  let joinInfo = null;
+  let myClientId = null;
+  let supabaseClient = null;
 
-  function connect() {
-    manualClose = false;
-    ws = new WebSocket(window.APP_CONFIG.SERVER_URL);
+  function on(event, cb) {
+    if (!handlers[event]) handlers[event] = [];
+    handlers[event].push(cb);
+  }
 
-    ws.onopen = () => {
-      reconnectAttempts = 0;
-      handlers.open && handlers.open();
-      if (joinInfo) send({ type: "join", ...joinInfo });
-    };
-
-    ws.onmessage = (event) => {
-      let msg;
+  function emit(event, ...args) {
+    (handlers[event] || []).forEach((cb) => {
       try {
-        msg = JSON.parse(event.data);
-      } catch (_) {
+        cb(...args);
+      } catch (err) {
+        console.error(`SignalingClient handler for "${event}" threw`, err);
+      }
+    });
+  }
+
+  function getClient() {
+    if (!supabaseClient) {
+      if (!window.supabase) {
+        throw new Error("supabase-js failed to load — check the CDN script tag in index.html");
+      }
+      supabaseClient = window.supabase.createClient(
+        window.APP_CONFIG.SUPABASE_URL,
+        window.APP_CONFIG.SUPABASE_ANON_KEY
+      );
+    }
+    return supabaseClient;
+  }
+
+  // Kept only for API compatibility with the old WebSocket client — a
+  // Supabase Realtime channel connects lazily when you subscribe to it,
+  // which join() does, so there's nothing to eagerly connect here.
+  function connect() {}
+
+  async function join(roomCode, displayName) {
+    myClientId = `${displayName}-${Math.random().toString(36).slice(2, 8)}`;
+    const client = getClient();
+
+    channel = client.channel(`room-${roomCode}`, {
+      config: { presence: { key: myClientId } }
+    });
+
+    channel.on("presence", { event: "join" }, ({ key }) => {
+      if (key === myClientId) return;
+      emit("message", { type: "peer-joined" });
+    });
+
+    channel.on("presence", { event: "leave" }, ({ key }) => {
+      if (key === myClientId) return;
+      emit("message", { type: "peer-left" });
+    });
+
+    channel.on("broadcast", { event: "signal" }, ({ payload }) => {
+      emit("message", { type: "signal", kind: payload.kind, data: payload.data });
+    });
+
+    channel.on("broadcast", { event: "caption" }, ({ payload }) => {
+      emit("message", { type: "caption", caption: payload.caption });
+    });
+
+    channel.subscribe(async (status) => {
+      if (status !== "SUBSCRIBED") return;
+
+      const existingPeers = Object.keys(channel.presenceState()).filter((k) => k !== myClientId);
+      if (existingPeers.length >= 2) {
+        emit("message", { type: "join-error", reason: "room-full" });
+        await client.removeChannel(channel);
+        channel = null;
         return;
       }
-      handlers.message && handlers.message(msg);
-    };
 
-    ws.onclose = () => {
-      handlers.close && handlers.close();
-      if (!manualClose) scheduleReconnect();
-    };
-
-    ws.onerror = () => {
-      // onclose fires right after; reconnect logic lives there.
-    };
-  }
-
-  function scheduleReconnect() {
-    reconnectAttempts += 1;
-    const delay = Math.min(1000 * 2 ** reconnectAttempts, 15000);
-    setTimeout(connect, delay);
-  }
-
-  function send(payload) {
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify(payload));
-      return true;
-    }
-    return false;
-  }
-
-  function join(roomCode, displayName) {
-    joinInfo = { room: roomCode, name: displayName };
-    if (!send({ type: "join", ...joinInfo })) connect();
+      await channel.track({ name: displayName, joinedAt: Date.now() });
+      emit("open");
+    });
   }
 
   function sendSignal(kind, data) {
-    send({ type: "signal", kind, data });
+    if (!channel) return false;
+    channel.send({ type: "broadcast", event: "signal", payload: { kind, data } });
+    return true;
   }
 
   function sendCaption(caption) {
-    send({ type: "caption", caption });
-  }
-
-  function on(event, cb) {
-    handlers[event] = cb;
+    if (!channel) return false;
+    channel.send({ type: "broadcast", event: "caption", payload: { caption } });
+    return true;
   }
 
   function close() {
-    manualClose = true;
-    joinInfo = null;
-    if (ws) ws.close();
+    if (channel) {
+      channel.untrack();
+      getClient().removeChannel(channel);
+      channel = null;
+    }
+    emit("close");
   }
 
   return { connect, join, sendSignal, sendCaption, on, close };

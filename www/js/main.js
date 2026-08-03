@@ -110,6 +110,7 @@
     window.SignalingClient.connect();
     window.SignalingClient.join(room, state.displayName);
 
+    window.AppLifecycle.startCallService();
     startCaptions();
     watchNetwork();
   }
@@ -249,6 +250,7 @@
     window.SpeechEngine.stop();
     window.WebRTCCall.teardown();
     window.SignalingClient.close();
+    window.AppLifecycle.stopCallService();
     callScreen.hidden = true;
     setupScreen.hidden = false;
     joinBtn.disabled = false;

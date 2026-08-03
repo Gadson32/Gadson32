@@ -40,13 +40,16 @@ window.TranslateQueue = (() => {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), window.APP_CONFIG.TRANSLATION_TIMEOUT_MS);
     try {
-      const headers = { "Content-Type": "application/json" };
-      if (window.APP_CONFIG.CLIENT_API_KEY) {
-        headers.Authorization = `Bearer ${window.APP_CONFIG.CLIENT_API_KEY}`;
-      }
-      const res = await fetch(`${window.APP_CONFIG.API_BASE_URL}/api/translate`, {
+      // Calling the Edge Function directly via fetch (rather than
+      // supabase-js's `functions.invoke`) keeps this module independent
+      // of the Supabase client instance signaling-client.js owns.
+      const res = await fetch(`${window.APP_CONFIG.SUPABASE_URL}/functions/v1/translate`, {
         method: "POST",
-        headers,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${window.APP_CONFIG.SUPABASE_ANON_KEY}`,
+          apikey: window.APP_CONFIG.SUPABASE_ANON_KEY
+        },
         body: JSON.stringify({
           text: item.text,
           sourceLang: item.sourceLang,

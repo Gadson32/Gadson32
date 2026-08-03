@@ -1,18 +1,17 @@
-// Runtime config for the web client. Overridden at build time by
-// injecting a different value here (or via a native-config plugin) per
-// environment — dev points at localhost, prod points at the deployed
-// signaling/translation server.
+// Runtime config for the web client.
 window.APP_CONFIG = {
-  // Signaling + translation relay server (see /server). Must be wss:// in
-  // production — plain ws:// only works for local dev.
-  SERVER_URL: window.__SERVER_URL__ || "ws://localhost:8787",
-  API_BASE_URL: window.__API_BASE_URL__ || "http://localhost:8787",
-  // Must match the server's CLIENT_API_KEY in any deployment where that's
-  // set. Left blank for local dev where the server runs open.
-  CLIENT_API_KEY: window.__CLIENT_API_KEY__ || "",
+  // Supabase project used for both signaling (Realtime channels) and
+  // translation (the `translate` Edge Function). The anon/publishable
+  // key is designed to be embedded in clients — it is not a secret, it's
+  // scoped by the project's RLS policies and the function's own auth.
+  SUPABASE_URL: window.__SUPABASE_URL__ || "https://lufmsqbqxkubhvdsdpon.supabase.co",
+  SUPABASE_ANON_KEY:
+    window.__SUPABASE_ANON_KEY__ ||
+    "sb_publishable_vrW4Cs7sa-qRq0kZRU_mSw_GesSJLzB",
 
   // STUN is enough for most NATs; a TURN server is required for calls
-  // across restrictive NATs/firewalls (add credentials before shipping).
+  // across restrictive NATs/firewalls (add credentials before shipping —
+  // see README "Known gaps").
   ICE_SERVERS: [
     { urls: "stun:stun.l.google.com:19302" }
   ],
