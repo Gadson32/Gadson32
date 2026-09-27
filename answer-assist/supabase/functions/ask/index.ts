@@ -34,11 +34,37 @@ interface RetrievedChunk {
   content: string;
 }
 
+const STOPWORDS = new Set([
+  "a", "an", "the", "is", "are", "was", "were", "be", "been", "being", "to", "of", "in", "on",
+  "at", "for", "and", "but", "tell", "me", "about", "you", "your", "i", "we", "they", "he",
+  "she", "it", "this", "that", "do", "did", "does", "can", "could", "would", "will", "shall",
+  "should", "my", "have", "has", "had", "what", "when", "where", "how", "why", "give", "an"
+]);
+
+// websearch_to_tsquery treats space-separated words as AND by default —
+// far too strict for a behavioral question ("tell me about a time you
+// handled conflict") against resume wording that's unlikely to share
+// most of those words ("resolved a scheduling dispute with a vendor").
+// Rewriting the query as an OR of the question's significant words (via
+// websearch_to_tsquery's documented "or" keyword) trades precision for
+// recall, which is the right direction here — missing a real match
+// entirely is worse than the model having to sift a looser set of
+// candidates. Pure string construction, no extra API call/cost.
+function buildRecallQuery(question: string): string {
+  const words = question
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter((w) => w.length > 2 && !STOPWORDS.has(w));
+  const uniqueWords = [...new Set(words)];
+  return uniqueWords.length > 0 ? uniqueWords.join(" or ") : question;
+}
+
 async function retrieveChunks(supabase: ReturnType<typeof createClient>, question: string): Promise<RetrievedChunk[]> {
   const { data, error } = await supabase
     .from("document_chunks")
     .select("content, documents(title)")
-    .textSearch("content_tsv", question, { type: "websearch", config: "english" })
+    .textSearch("content_tsv", buildRecallQuery(question), { type: "websearch", config: "english" })
     .limit(TOP_K);
 
   if (error) {
