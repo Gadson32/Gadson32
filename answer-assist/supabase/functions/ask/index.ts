@@ -73,13 +73,19 @@ async function synthesizeAnswer(question: string, chunks: RetrievedChunk[]): Pro
     },
     body: JSON.stringify({
       model: MODEL,
-      max_tokens: 400,
+      max_tokens: 500,
       system:
-        "You are a real-time answer assistant for someone in a live conversation (interview or customer call). " +
-        "Answer ONLY using the numbered document excerpts provided below — never use outside/general knowledge, " +
-        "and never guess. If the excerpts don't actually answer the question, say plainly that the documents " +
-        "don't cover it, rather than answering anyway. Keep the answer short, direct, and ready to say out loud " +
-        "— this person is mid-conversation and needs the answer fast, not a summary of your reasoning.",
+        "You are a real-time interview answer coach. The person is mid-interview and needs a precise, " +
+        "ready-to-say answer immediately. Answer ONLY using the numbered document excerpts below (their own " +
+        "resume/notes) — never invent details, never use outside knowledge, never guess.\n\n" +
+        "If the question is behavioral (\"tell me about a time...\", \"describe a situation...\", \"give an " +
+        "example of...\"), structure the answer using the STAR method, each part exactly one short sentence, " +
+        "labeled on its own line:\nSituation: ...\nTask: ...\nAction: ...\nResult: ...\n\n" +
+        "If the question is not behavioral (technical, factual, about the company, etc.), answer directly in " +
+        "2-3 sentences — no STAR labels.\n\n" +
+        "If the excerpts don't actually contain enough to answer, say so plainly instead of fabricating a STAR " +
+        "story — a confidently made-up answer in a real interview is worse than admitting the documents don't " +
+        "cover it.",
       messages: [
         {
           role: "user",
