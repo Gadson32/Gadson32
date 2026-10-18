@@ -1,11 +1,9 @@
-- 👋 Hi, I’m @Gadson32
-- 👀 I’m interested in CLoud Computing
-- 🌱 I’m currently learning AWS Cloud Practitioner
-- 💞️ I’m looking to collaborate on anz cloud related project to get a form understanding of the business  
-- 📫 How to reach me anthony181187@gmail.com
-- 😄 Pronouns: ...
-- ⚡ Fun fact: I currently have my AWS Solution Architect Associate Certificate
-  
+# Hi, I'm Anthony (Live) 👋
+
+I help businesses cut AWS cloud costs and tighten infrastructure efficiency — audits, optimization, and lean architecture, backed by an AWS Solutions Architect Associate certification.
+
+**Want a free cloud cost audit?** Email me: anthony181187@gmail.com
+
 <!---
 Gadson32/Gadson32 is a ✨ special ✨ repository because its `README.md` (this file) appears on your GitHub profile.
 You can click the Preview link to take a look at your changes.
